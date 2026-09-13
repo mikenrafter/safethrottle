@@ -1,0 +1,58 @@
+# safethrottle — asymptotic domain rate-limit TUN gateway
+
+# When true, `run` installs split-default routes into the TUN on start.
+# Scripts `safethrottle` / `nothrottle` can still toggle routing at runtime.
+default_route = true
+
+tun_name = "safethrottle0"
+tun_addr = "10.10.10.2"
+tun_dest = "10.10.10.1"
+tun_netmask = "255.255.255.0"
+
+# Physical uplink for SO_BINDTODEVICE (empty = auto-detect from main table default route).
+uplink_iface = ""
+
+# Policy routing: capture before Tailscale's `pref 5270 lookup 52`.
+route_table_id = 100
+route_rule_priority = 5260
+
+# Soft throttle begins at this fraction of each family's limit (never hard-stops).
+soft_ratio = 0.7
+# Multiplier on soft-zone waits: (time_left / slots_left) * soft_pace.
+soft_pace = 0.7
+
+# Rate unit for now: requests per rolling minute (new admitted TCP connections).
+# Future: "bytes_per_sec", "requests_per_hour", etc.
+unit = "reqs_per_min"
+
+[families.github]
+# ~5000 authenticated REST requests/hour ≈ 83/min; soft-cap at 80.
+limit = 80
+suffixes = [
+  "github.com",
+  "api.github.com",
+  "githubusercontent.com",
+  "gist.github.com",
+  "codeload.github.com",
+  "uploads.github.com",
+]
+
+[families.youtube]
+# Elevated for site + media CDN TCP churn (googlevideo / ytimg).
+limit = 300
+suffixes = [
+  "youtube.com",
+  "youtu.be",
+  "googlevideo.com",
+  "ytimg.com",
+  "ggpht.com",
+  "youtube-nocookie.com",
+]
+
+[families.substack]
+# Aligns with common unofficial Substack API wrapper limits (~10–20/min).
+limit = 20
+suffixes = [
+  "substack.com",
+  "substackcdn.com",
+]
